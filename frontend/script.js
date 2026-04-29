@@ -7,6 +7,14 @@ let currentSessionId = null;
 // DOM elements
 let chatMessages, chatInput, sendButton, totalCourses, courseTitles;
 
+// Theme — apply before first paint to avoid flash
+(function initTheme() {
+    const saved = localStorage.getItem('theme');
+    const preferred = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    const theme = saved || preferred;
+    if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+})();
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     // Get DOM elements after page loads
@@ -15,8 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
     sendButton = document.getElementById('sendButton');
     totalCourses = document.getElementById('totalCourses');
     courseTitles = document.getElementById('courseTitles');
-    
+
     setupEventListeners();
+    syncThemeToggleLabel();
     createNewSession();
     loadCourseStats();
 });
@@ -28,8 +37,7 @@ function setupEventListeners() {
     chatInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') sendMessage();
     });
-    
-    
+
     // New chat button
     document.getElementById('newChatButton').addEventListener('click', createNewSession);
 
@@ -41,6 +49,34 @@ function setupEventListeners() {
             sendMessage();
         });
     });
+
+    // Theme toggle
+    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+}
+
+function toggleTheme() {
+    const btn = document.getElementById('themeToggle');
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+
+    // Brief spin animation
+    btn.classList.add('toggling');
+    setTimeout(() => btn.classList.remove('toggling'), 400);
+
+    if (isLight) {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('theme', 'dark');
+    } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('theme', 'light');
+    }
+    syncThemeToggleLabel();
+}
+
+function syncThemeToggleLabel() {
+    const btn = document.getElementById('themeToggle');
+    if (!btn) return;
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    btn.setAttribute('aria-label', isLight ? 'Switch to dark mode' : 'Switch to light mode');
 }
 
 
