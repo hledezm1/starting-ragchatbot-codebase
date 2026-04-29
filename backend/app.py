@@ -40,16 +40,24 @@ class QueryRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
 
+class SourceItem(BaseModel):
+    """A single source citation with optional link"""
+    label: str
+    url: Optional[str] = None
+
 class QueryResponse(BaseModel):
     """Response model for course queries"""
     answer: str
-    sources: List[str]
+    sources: List[SourceItem]
     session_id: str
 
 class CourseStats(BaseModel):
     """Response model for course statistics"""
     total_courses: int
     course_titles: List[str]
+
+class NewSessionRequest(BaseModel):
+    session_id: Optional[str] = None
 
 # API Endpoints
 
@@ -72,6 +80,14 @@ async def query_documents(request: QueryRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/session/new")
+async def new_session(request: NewSessionRequest = NewSessionRequest()):
+    """Clear the old session and create a fresh one"""
+    if request.session_id:
+        rag_system.session_manager.clear_session(request.session_id)
+    new_id = rag_system.session_manager.create_session()
+    return {"session_id": new_id}
 
 @app.get("/api/courses", response_model=CourseStats)
 async def get_course_stats():

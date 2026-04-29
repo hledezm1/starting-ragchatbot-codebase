@@ -30,6 +30,9 @@ function setupEventListeners() {
     });
     
     
+    // New chat button
+    document.getElementById('newChatButton').addEventListener('click', createNewSession);
+
     // Suggested questions
     document.querySelectorAll('.suggested-item').forEach(button => {
         button.addEventListener('click', (e) => {
@@ -122,10 +125,16 @@ function addMessage(content, type, sources = null, isWelcome = false) {
     let html = `<div class="message-content">${displayContent}</div>`;
     
     if (sources && sources.length > 0) {
+        const sourceLinks = sources.map(s => {
+            if (s.url) {
+                return `<a href="${s.url}" target="_blank" rel="noopener noreferrer">${s.label}</a>`;
+            }
+            return s.label;
+        }).join(', ');
         html += `
             <details class="sources-collapsible">
                 <summary class="sources-header">Sources</summary>
-                <div class="sources-content">${sources.join(', ')}</div>
+                <div class="sources-content">${sourceLinks}</div>
             </details>
         `;
     }
@@ -147,9 +156,22 @@ function escapeHtml(text) {
 // Removed removeMessage function - no longer needed since we handle loading differently
 
 async function createNewSession() {
+    const oldSessionId = currentSessionId;
     currentSessionId = null;
     chatMessages.innerHTML = '';
     addMessage('Welcome to the Course Materials Assistant! I can help you with questions about courses, lessons and specific content. What would you like to know?', 'assistant', null, true);
+
+    try {
+        const response = await fetch(`${API_URL}/session/new`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: oldSessionId })
+        });
+        const data = await response.json();
+        currentSessionId = data.session_id;
+    } catch (err) {
+        // session will be lazily created on first query
+    }
 }
 
 // Load course statistics
