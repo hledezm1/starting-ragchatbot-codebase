@@ -1,7 +1,9 @@
+from typing import List, Optional
+
 import anthropic
-from typing import List, Optional, Dict, Any
 
 MAX_TOOL_ROUNDS = 2
+
 
 class AIGenerator:
     """Handles interactions with Anthropic's Claude API for generating responses"""
@@ -39,16 +41,15 @@ Provide only the direct answer to what was asked.
         self.model = model
 
         # Pre-build base API parameters
-        self.base_params = {
-            "model": self.model,
-            "temperature": 0,
-            "max_tokens": 800
-        }
+        self.base_params = {"model": self.model, "temperature": 0, "max_tokens": 800}
 
-    def generate_response(self, query: str,
-                         conversation_history: Optional[str] = None,
-                         tools: Optional[List] = None,
-                         tool_manager=None) -> str:
+    def generate_response(
+        self,
+        query: str,
+        conversation_history: Optional[str] = None,
+        tools: Optional[List] = None,
+        tool_manager=None,
+    ) -> str:
         """
         Generate AI response with optional sequential tool usage (up to MAX_TOOL_ROUNDS).
 
@@ -95,11 +96,13 @@ Provide only the direct answer to what was asked.
                 except Exception as e:
                     result = f"Tool execution error: {e}"
                     tool_failed = True
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": block.id,
-                    "content": result,
-                })
+                tool_results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": result,
+                    }
+                )
                 if tool_failed:
                     break
 
@@ -113,6 +116,8 @@ Provide only the direct answer to what was asked.
                 break  # fall through to final synthesis (c)
 
         # Termination (a)/(c): final synthesis without tools
-        final_params = {k: v for k, v in current_params.items() if k not in ("tools", "tool_choice")}
+        final_params = {
+            k: v for k, v in current_params.items() if k not in ("tools", "tool_choice")
+        }
         final_response = self.client.messages.create(**final_params)
         return final_response.content[0].text

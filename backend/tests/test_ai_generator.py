@@ -6,16 +6,17 @@ The model-ID validity tests compare config.py's model string against the
 known-valid Claude 4 IDs; a failure here is the most likely root cause of
 "query failed" in production.
 """
-import pytest
-from unittest.mock import MagicMock, patch, call
 
+from unittest.mock import MagicMock, patch
+
+import pytest
 from ai_generator import AIGenerator
 from config import config as app_config
-
 
 # ---------------------------------------------------------------------------
 # Helpers to build mock Anthropic responses
 # ---------------------------------------------------------------------------
+
 
 def _text_response(text="Answer text"):
     block = MagicMock()
@@ -27,9 +28,9 @@ def _text_response(text="Answer text"):
     return resp
 
 
-def _tool_use_response(tool_name="search_course_content",
-                       tool_input=None,
-                       tool_id="tool_abc123"):
+def _tool_use_response(
+    tool_name="search_course_content", tool_input=None, tool_id="tool_abc123"
+):
     block = MagicMock()
     block.type = "tool_use"
     block.name = tool_name
@@ -44,6 +45,7 @@ def _tool_use_response(tool_name="search_course_content",
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def gen():
@@ -102,6 +104,7 @@ class TestModelIDValidity:
 # Direct (no-tool) response path
 # ---------------------------------------------------------------------------
 
+
 class TestDirectResponsePath:
     def test_returns_text_from_response(self, gen):
         gen.client.messages.create.return_value = _text_response("Paris.")
@@ -130,7 +133,9 @@ class TestDirectResponsePath:
     def test_conversation_history_appended_to_system(self, gen):
         gen.client.messages.create.return_value = _text_response()
 
-        gen.generate_response("follow-up", conversation_history="User: hi\nAssistant: hello")
+        gen.generate_response(
+            "follow-up", conversation_history="User: hi\nAssistant: hello"
+        )
 
         kwargs = gen.client.messages.create.call_args[1]
         assert "Previous conversation" in kwargs["system"]
@@ -146,7 +151,9 @@ class TestDirectResponsePath:
 
     def test_tools_passed_to_api_when_provided(self, gen):
         gen.client.messages.create.return_value = _text_response()
-        tool_defs = [{"name": "search_course_content", "description": "...", "input_schema": {}}]
+        tool_defs = [
+            {"name": "search_course_content", "description": "...", "input_schema": {}}
+        ]
 
         gen.generate_response("question", tools=tool_defs)
 
@@ -166,6 +173,7 @@ class TestDirectResponsePath:
 # ---------------------------------------------------------------------------
 # Tool-use execution path
 # ---------------------------------------------------------------------------
+
 
 class TestToolUsePath:
     def test_executes_tool_when_stop_reason_is_tool_use(self, gen):
@@ -207,7 +215,9 @@ class TestToolUsePath:
         assert tool_result_msg["role"] == "user"
         assert tool_result_msg["content"][0]["type"] == "tool_result"
         assert tool_result_msg["content"][0]["tool_use_id"] == "call_xyz"
-        assert "Embeddings are dense vectors" in tool_result_msg["content"][0]["content"]
+        assert (
+            "Embeddings are dense vectors" in tool_result_msg["content"][0]["content"]
+        )
 
     def test_assistant_tool_use_block_in_second_call_messages(self, gen):
         """The assistant's tool-use content block must appear in the second call's history."""
@@ -268,8 +278,16 @@ class TestToolUsePath:
     def test_two_rounds_both_tools_executed(self, gen):
         """Both tools in a 2-round sequence are each executed once."""
         gen.client.messages.create.side_effect = [
-            _tool_use_response(tool_name="search_course_content", tool_id="t1", tool_input={"query": "X"}),
-            _tool_use_response(tool_name="get_course_outline", tool_id="t2", tool_input={"course_name": "Y"}),
+            _tool_use_response(
+                tool_name="search_course_content",
+                tool_id="t1",
+                tool_input={"query": "X"},
+            ),
+            _tool_use_response(
+                tool_name="get_course_outline",
+                tool_id="t2",
+                tool_input={"course_name": "Y"},
+            ),
             _text_response("Done"),
         ]
         mock_tm = MagicMock()
@@ -291,7 +309,9 @@ class TestToolUsePath:
         mock_tm = MagicMock()
         mock_tm.execute_tool.return_value = "result"
 
-        gen.generate_response("q", tools=[{"name": "search_course_content"}], tool_manager=mock_tm)
+        gen.generate_response(
+            "q", tools=[{"name": "search_course_content"}], tool_manager=mock_tm
+        )
 
         final_kwargs = gen.client.messages.create.call_args_list[2][1]
         assert "tools" not in final_kwargs

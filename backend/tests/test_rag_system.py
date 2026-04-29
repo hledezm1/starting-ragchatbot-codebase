@@ -6,15 +6,16 @@ DocumentProcessor) are mocked.  These tests verify that query() correctly
 wires its components together and that exceptions from AIGenerator propagate
 to the caller (which is what triggers "query failed" in the frontend).
 """
+
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, call
-
 from rag_system import RAGSystem
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def rag():
@@ -25,7 +26,7 @@ def rag():
     with (
         patch("rag_system.DocumentProcessor"),
         patch("rag_system.VectorStore"),
-        patch("rag_system.AIGenerator") as MockAI,
+        patch("rag_system.AIGenerator"),
         patch("rag_system.SessionManager"),
     ):
         cfg = MagicMock()
@@ -42,7 +43,9 @@ def rag():
         # Default: AI returns a string, no sources
         system.ai_generator.generate_response.return_value = "Mocked answer."
         system.tool_manager = MagicMock()
-        system.tool_manager.get_tool_definitions.return_value = [{"name": "search_course_content"}]
+        system.tool_manager.get_tool_definitions.return_value = [
+            {"name": "search_course_content"}
+        ]
         system.tool_manager.get_last_sources.return_value = []
         yield system
 
@@ -50,6 +53,7 @@ def rag():
 # ---------------------------------------------------------------------------
 # Return-value contract
 # ---------------------------------------------------------------------------
+
 
 class TestQueryReturnValues:
     def test_returns_tuple_of_str_and_list(self, rag):
@@ -72,7 +76,9 @@ class TestQueryReturnValues:
 
         _, sources = rag.query("What is MCP?")
 
-        assert sources == [{"label": "MCP Course - Lesson 1", "url": "http://example.com"}]
+        assert sources == [
+            {"label": "MCP Course - Lesson 1", "url": "http://example.com"}
+        ]
 
     def test_returns_empty_sources_when_no_tool_was_called(self, rag):
         rag.tool_manager.get_last_sources.return_value = []
@@ -85,6 +91,7 @@ class TestQueryReturnValues:
 # ---------------------------------------------------------------------------
 # AI generator is called correctly
 # ---------------------------------------------------------------------------
+
 
 class TestQueryCallsAIGenerator:
     def test_calls_generate_response_once(self, rag):
@@ -117,6 +124,7 @@ class TestQueryCallsAIGenerator:
 # Conversation history / session management
 # ---------------------------------------------------------------------------
 
+
 class TestQuerySessionHandling:
     def test_fetches_history_when_session_id_provided(self, rag):
         rag.session_manager.get_conversation_history.return_value = "User: hi"
@@ -126,7 +134,9 @@ class TestQuerySessionHandling:
         rag.session_manager.get_conversation_history.assert_called_once_with("sess_1")
 
     def test_history_passed_to_ai_generator(self, rag):
-        rag.session_manager.get_conversation_history.return_value = "User: hi\nAssistant: hello"
+        rag.session_manager.get_conversation_history.return_value = (
+            "User: hi\nAssistant: hello"
+        )
 
         rag.query("follow-up", session_id="sess_1")
 
@@ -158,6 +168,7 @@ class TestQuerySessionHandling:
 # Sources lifecycle
 # ---------------------------------------------------------------------------
 
+
 class TestQuerySourcesLifecycle:
     def test_resets_sources_after_retrieving_them(self, rag):
         rag.query("question")
@@ -167,7 +178,9 @@ class TestQuerySourcesLifecycle:
     def test_retrieves_sources_before_reset(self, rag):
         """get_last_sources must be called before reset_sources."""
         call_order = []
-        rag.tool_manager.get_last_sources.side_effect = lambda: call_order.append("get") or []
+        rag.tool_manager.get_last_sources.side_effect = (
+            lambda: call_order.append("get") or []
+        )
         rag.tool_manager.reset_sources.side_effect = lambda: call_order.append("reset")
 
         rag.query("question")
@@ -181,6 +194,7 @@ class TestQuerySourcesLifecycle:
 # ---------------------------------------------------------------------------
 # Error propagation — this is what causes "query failed" in the frontend
 # ---------------------------------------------------------------------------
+
 
 class TestQueryErrorPropagation:
     def test_exception_from_ai_generator_propagates(self, rag):
@@ -197,7 +211,9 @@ class TestQueryErrorPropagation:
             rag.query("What is RAG?")
 
     def test_exception_message_is_preserved(self, rag):
-        rag.ai_generator.generate_response.side_effect = Exception("API error: bad request")
+        rag.ai_generator.generate_response.side_effect = Exception(
+            "API error: bad request"
+        )
 
         with pytest.raises(Exception) as exc_info:
             rag.query("question")

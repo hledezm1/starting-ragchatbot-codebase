@@ -17,4 +17,25 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    "httpx>=0.27",
+    "black>=24.0",
+    "ruff>=0.4",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+addopts = "-v"
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]  # pycodestyle errors, pyflakes, isort
+ignore = ["E501"]  # line length enforced by black; string literals can't be split
+
+[tool.ruff.lint.per-file-ignores]
+"backend/app.py" = ["E402"]  # warnings.filterwarnings must precede noisy imports

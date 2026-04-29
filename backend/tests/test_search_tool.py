@@ -5,16 +5,17 @@ Strategy: unit tests use a MagicMock VectorStore so we can control every
 return value precisely.  Integration tests (marked with @pytest.mark.integration)
 hit the real ChromaDB that was seeded at server startup.
 """
+
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, call
-
-from search_tools import CourseSearchTool, CourseOutlineTool, ToolManager
+from search_tools import CourseSearchTool, ToolManager
 from vector_store import SearchResults
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def mock_store():
@@ -39,9 +40,12 @@ def _make_results(docs, metas, distances=None):
 # CourseSearchTool.execute() – argument forwarding
 # ---------------------------------------------------------------------------
 
+
 class TestExecuteForwardsArguments:
     def test_forwards_query_only(self, tool, mock_store):
-        mock_store.search.return_value = SearchResults(documents=[], metadata=[], distances=[])
+        mock_store.search.return_value = SearchResults(
+            documents=[], metadata=[], distances=[]
+        )
 
         tool.execute(query="what is RAG?")
 
@@ -52,7 +56,9 @@ class TestExecuteForwardsArguments:
         )
 
     def test_forwards_course_name_filter(self, tool, mock_store):
-        mock_store.search.return_value = SearchResults(documents=[], metadata=[], distances=[])
+        mock_store.search.return_value = SearchResults(
+            documents=[], metadata=[], distances=[]
+        )
 
         tool.execute(query="embeddings", course_name="Advanced Retrieval")
 
@@ -63,7 +69,9 @@ class TestExecuteForwardsArguments:
         )
 
     def test_forwards_lesson_number_filter(self, tool, mock_store):
-        mock_store.search.return_value = SearchResults(documents=[], metadata=[], distances=[])
+        mock_store.search.return_value = SearchResults(
+            documents=[], metadata=[], distances=[]
+        )
 
         tool.execute(query="embeddings", lesson_number=3)
 
@@ -74,7 +82,9 @@ class TestExecuteForwardsArguments:
         )
 
     def test_forwards_both_filters(self, tool, mock_store):
-        mock_store.search.return_value = SearchResults(documents=[], metadata=[], distances=[])
+        mock_store.search.return_value = SearchResults(
+            documents=[], metadata=[], distances=[]
+        )
 
         tool.execute(query="embeddings", course_name="MCP", lesson_number=2)
 
@@ -88,6 +98,7 @@ class TestExecuteForwardsArguments:
 # ---------------------------------------------------------------------------
 # CourseSearchTool.execute() – return-value formatting
 # ---------------------------------------------------------------------------
+
 
 class TestExecuteReturnValues:
     def test_returns_formatted_course_and_lesson_header(self, tool, mock_store):
@@ -114,21 +125,27 @@ class TestExecuteReturnValues:
         assert "Lesson" not in result
 
     def test_returns_no_content_message_when_empty(self, tool, mock_store):
-        mock_store.search.return_value = SearchResults(documents=[], metadata=[], distances=[])
+        mock_store.search.return_value = SearchResults(
+            documents=[], metadata=[], distances=[]
+        )
 
         result = tool.execute(query="nonexistent topic")
 
         assert "No relevant content found" in result
 
     def test_no_content_message_includes_course_filter(self, tool, mock_store):
-        mock_store.search.return_value = SearchResults(documents=[], metadata=[], distances=[])
+        mock_store.search.return_value = SearchResults(
+            documents=[], metadata=[], distances=[]
+        )
 
         result = tool.execute(query="topic", course_name="GhostCourse")
 
         assert "GhostCourse" in result
 
     def test_no_content_message_includes_lesson_filter(self, tool, mock_store):
-        mock_store.search.return_value = SearchResults(documents=[], metadata=[], distances=[])
+        mock_store.search.return_value = SearchResults(
+            documents=[], metadata=[], distances=[]
+        )
 
         result = tool.execute(query="topic", lesson_number=99)
 
@@ -136,7 +153,9 @@ class TestExecuteReturnValues:
 
     def test_returns_error_string_on_search_failure(self, tool, mock_store):
         mock_store.search.return_value = SearchResults(
-            documents=[], metadata=[], distances=[],
+            documents=[],
+            metadata=[],
+            distances=[],
             error="Search error: connection failed",
         )
 
@@ -164,6 +183,7 @@ class TestExecuteReturnValues:
 # CourseSearchTool – sources tracking
 # ---------------------------------------------------------------------------
 
+
 class TestSourcesTracking:
     def test_populates_last_sources_after_successful_search(self, tool, mock_store):
         mock_store.search.return_value = _make_results(
@@ -178,7 +198,9 @@ class TestSourcesTracking:
         assert tool.last_sources[0]["label"] == "RAG Course - Lesson 1"
         assert tool.last_sources[0]["url"] == "http://example.com/l1"
 
-    def test_source_label_has_no_lesson_suffix_when_lesson_number_is_none(self, tool, mock_store):
+    def test_source_label_has_no_lesson_suffix_when_lesson_number_is_none(
+        self, tool, mock_store
+    ):
         mock_store.search.return_value = _make_results(
             docs=["content"],
             metas=[{"course_title": "RAG Course", "lesson_number": None}],
@@ -193,7 +215,9 @@ class TestSourcesTracking:
         assert fresh_tool.last_sources == []
 
     def test_last_sources_empty_when_no_results(self, tool, mock_store):
-        mock_store.search.return_value = SearchResults(documents=[], metadata=[], distances=[])
+        mock_store.search.return_value = SearchResults(
+            documents=[], metadata=[], distances=[]
+        )
 
         tool.execute(query="nothing")
 
@@ -204,11 +228,14 @@ class TestSourcesTracking:
 # ToolManager
 # ---------------------------------------------------------------------------
 
+
 class TestToolManager:
     def test_register_and_execute_tool(self):
         manager = ToolManager()
         mock_store = MagicMock()
-        mock_store.search.return_value = SearchResults(documents=[], metadata=[], distances=[])
+        mock_store.search.return_value = SearchResults(
+            documents=[], metadata=[], distances=[]
+        )
         tool = CourseSearchTool(mock_store)
         manager.register_tool(tool)
 
